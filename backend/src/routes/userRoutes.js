@@ -1,6 +1,6 @@
 import express from "express";
 import prisma from "../config/prisma.js";
-import requireIam from "../middleware/requireIam.js";
+import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import {
   assertCanDelegateStatements,
@@ -29,7 +29,7 @@ const publicUserSelect = {
 
 router.get(
   "/",
-  requireIam("iam:ListUsers"),
+  iampermissioncheck("iam:ListUsers"),
   asyncHandler(async (req, res) => {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: "asc" },
@@ -59,7 +59,7 @@ router.get(
 
 router.get(
   "/:id",
-  requireIam("iam:GetUser"),
+  iampermissioncheck("iam:GetUser"),
   asyncHandler(async (req, res) => {
     const user = await getUserWithIam(req.params.id);
     if (!user) {
@@ -88,7 +88,7 @@ router.get(
 
 router.post(
   "/:id/policies",
-  requireIam("iam:AttachUserPolicy"),
+  iampermissioncheck("iam:AttachUserPolicy"),
   asyncHandler(async (req, res) => {
     const { policyId } = req.body;
     if (!policyId) {
@@ -127,18 +127,29 @@ router.post(
 
 router.delete(
   "/:id/policies/:policyId",
-  requireIam("iam:DetachUserPolicy"),
+  iampermissioncheck("iam:DetachUserPolicy"),
   asyncHandler(async (req, res) => {
-    const targetUser = await prisma.user.findUnique({ where: { id: req.params.id } });
+    const [targetUser, policy] = await Promise.all([
+      prisma.user.findUnique({ where: { id: req.params.id } }),
+      prisma.policy.findUnique({ where: { id: req.params.policyId } }),
+    ]);
+
     if (!targetUser) {
       throw notFound("User not found");
+    }
+    if (!policy) {
+      throw notFound("Policy not found");
     }
 
     ensureCanModifyTargetUserAccess(req, targetUser);
 
-    await prisma.userPolicyAttachment.delete({
-      where: { userId_policyId: { userId: targetUser.id, policyId: req.params.policyId } },
-    });
+    if (policy.type === "INLINE") {
+      await prisma.policy.delete({ where: { id: policy.id } });
+    } else {
+      await prisma.userPolicyAttachment.delete({
+        where: { userId_policyId: { userId: targetUser.id, policyId: policy.id } },
+      });
+    }
 
     sendSuccess(res, { userId: targetUser.id, policyId: req.params.policyId });
   }),
@@ -146,7 +157,7 @@ router.delete(
 
 router.put(
   "/:id/boundary",
-  requireIam("iam:PutUserBoundary"),
+  iampermissioncheck("iam:PutUserBoundary"),
   asyncHandler(async (req, res) => {
     if (!req.user.isRoot) {
       throw forbidden("Only root can set user boundaries");
@@ -187,7 +198,7 @@ router.put(
 
 router.delete(
   "/:id/boundary",
-  requireIam("iam:DeleteUserBoundary"),
+  iampermissioncheck("iam:DeleteUserBoundary"),
   asyncHandler(async (req, res) => {
     if (!req.user.isRoot) {
       throw forbidden("Only root can remove user boundaries");

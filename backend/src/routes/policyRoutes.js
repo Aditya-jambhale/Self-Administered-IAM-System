@@ -1,6 +1,6 @@
 import express from "express";
 import prisma from "../config/prisma.js";
-import requireIam from "../middleware/requireIam.js";
+import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { assertCanDelegateStatements, getPolicyStatementCount } from "../services/iamService.js";
 import { badRequest, conflict, forbidden, notFound } from "../utils/httpError.js";
@@ -53,7 +53,7 @@ const ensureNotModifyingRootPolicy = (req, policy) => {
 
 router.get(
   "/",
-  requireIam("iam:ListPolicies"),
+  iampermissioncheck("iam:ListPolicies"),
   asyncHandler(async (req, res) => {
     const policies = await prisma.policy.findMany({ orderBy: { createdAt: "asc" } });
     sendSuccess(
@@ -65,7 +65,7 @@ router.get(
 
 router.get(
   "/:id",
-  requireIam("iam:GetPolicy"),
+  iampermissioncheck("iam:GetPolicy"),
   asyncHandler(async (req, res) => {
     const policy = await prisma.policy.findUnique({ where: { id: req.params.id }, include: policyInclude });
     if (!policy) {
@@ -78,7 +78,7 @@ router.get(
 
 router.post(
   "/",
-  requireIam("iam:CreatePolicy"),
+  iampermissioncheck("iam:CreatePolicy"),
   asyncHandler(async (req, res) => {
     const { name, description, type } = req.body;
 
@@ -94,9 +94,62 @@ router.post(
     const statements = validatePolicyStatements(req.body.statements);
     await assertCanDelegateStatements(req.user, statements);
 
-    const policy = await prisma.policy.create({
-      data: { name, description, type, statements },
-    });
+    const { userId, groupId } = req.body;
+    let policy;
+
+    if (type === "INLINE") {
+      if (!userId && !groupId) {
+        throw badRequest("Inline policy must be assigned to a user or group");
+      }
+      if (userId && groupId) {
+        throw badRequest("Inline policy cannot be assigned to both a user and a group");
+      }
+
+      if (userId) {
+        const targetUser = await prisma.user.findUnique({ where: { id: userId } });
+        if (!targetUser) {
+          throw notFound("User not found");
+        }
+        if (targetUser.isRoot && !req.user.isRoot) {
+          throw forbidden("Only root can modify the root user's access");
+        }
+
+        policy = await prisma.$transaction(async (tx) => {
+          const p = await tx.policy.create({
+            data: { name, description, type, statements },
+          });
+          await tx.userPolicyAttachment.create({
+            data: { userId, policyId: p.id },
+          });
+          return p;
+        });
+      } else {
+        const targetGroup = await prisma.group.findUnique({
+          where: { id: groupId },
+          include: { members: { include: { user: true } } },
+        });
+        if (!targetGroup) {
+          throw notFound("Group not found");
+        }
+        if (!req.user.isRoot && targetGroup.members.some((m) => m.user.isRoot)) {
+          throw forbidden("Only root can modify a group that contains the root user");
+        }
+
+        policy = await prisma.$transaction(async (tx) => {
+          const p = await tx.policy.create({
+            data: { name, description, type, statements },
+          });
+          await tx.groupPolicyAttachment.create({
+            data: { groupId, policyId: p.id },
+          });
+          return p;
+        });
+      }
+    } else {
+      policy = await prisma.policy.create({
+        data: { name, description, type, statements },
+      });
+    }
 
     sendSuccess(res, policy, 201);
   }),
@@ -104,7 +157,7 @@ router.post(
 
 router.put(
   "/:id",
-  requireIam("iam:UpdatePolicy"),
+  iampermissioncheck("iam:UpdatePolicy"),
   asyncHandler(async (req, res) => {
     const policy = await prisma.policy.findUnique({ where: { id: req.params.id }, include: policyInclude });
     if (!policy) {
@@ -144,7 +197,7 @@ router.put(
 
 router.delete(
   "/:id",
-  requireIam("iam:DeletePolicy"),
+  iampermissioncheck("iam:DeletePolicy"),
   asyncHandler(async (req, res) => {
     const policy = await prisma.policy.findUnique({ where: { id: req.params.id }, include: policyInclude });
     if (!policy) {

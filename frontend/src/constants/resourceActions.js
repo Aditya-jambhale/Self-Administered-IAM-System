@@ -1,0 +1,22 @@
+export const resourceActions = [
+  { group: 'reports', label: 'List reports', action: 'reports:List', method: 'GET', path: '/api/reports' },
+  { group: 'reports', label: 'Read report', action: 'reports:Read', method: 'GET', path: '/api/reports/demo-report' },
+  { group: 'reports', label: 'Create report', action: 'reports:Create', method: 'POST', path: '/api/reports' },
+  { group: 'reports', label: 'Update report', action: 'reports:Update', method: 'PUT', path: '/api/reports/demo-report' },
+  { group: 'reports', label: 'Delete report', action: 'reports:Delete', method: 'DELETE', path: '/api/reports/demo-report' },
+  { group: 'alerts', label: 'List alerts', action: 'alerts:List', method: 'GET', path: '/api/alerts' },
+  { group: 'alerts', label: 'Read alert', action: 'alerts:Read', method: 'GET', path: '/api/alerts/demo-alert' },
+  { group: 'alerts', label: 'Create alert', action: 'alerts:Create', method: 'POST', path: '/api/alerts' },
+  { group: 'alerts', label: 'Acknowledge alert', action: 'alerts:Acknowledge', method: 'PATCH', path: '/api/alerts/demo-alert/acknowledge' },
+  { group: 'alerts', label: 'Delete alert', action: 'alerts:Delete', method: 'DELETE', path: '/api/alerts/demo-alert' },
+  { group: 'settings', label: 'Read settings', action: 'settings:Read', method: 'GET', path: '/api/settings' },
+  { group: 'settings', label: 'Update settings', action: 'settings:Update', method: 'PUT', path: '/api/settings' },
+  { group: 'audit', label: 'List audit logs', action: 'audit:List', method: 'GET', path: '/api/audit' },
+  { group: 'audit', label: 'Read audit log', action: 'audit:Read', method: 'GET', path: '/api/audit/demo-log' },
+]
+
+export const groupedResourceActions = resourceActions.reduce((acc, item) => {
+  acc[item.group] = acc[item.group] || []
+  acc[item.group].push(item)
+  return acc
+}, {})

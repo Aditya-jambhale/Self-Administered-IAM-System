@@ -1,11 +1,11 @@
 import express from "express";
-import requireIam from "../middleware/requireIam.js";
+import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import { sendOk } from "../utils/response.js";
 
 const router = express.Router();
 
 const protectedRoute = (method, path, action) => {
-  router[method](path, requireIam(action), (req, res) => sendOk(res));
+  router[method](path, iampermissioncheck(action), (req, res) => sendOk(res));
 };
 
 protectedRoute("get", "/reports", "reports:List");

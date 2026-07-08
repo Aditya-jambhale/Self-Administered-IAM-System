@@ -1,6 +1,6 @@
 import express from "express";
 import prisma from "../config/prisma.js";
-import requireIam from "../middleware/requireIam.js";
+import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { assertCanDelegateStatements } from "../services/iamService.js";
 import { badRequest, conflict, forbidden, notFound } from "../utils/httpError.js";
@@ -38,7 +38,7 @@ const ensureNotRootGroupChange = (req, group) => {
 
 router.get(
   "/",
-  requireIam("iam:ListGroups"),
+  iampermissioncheck("iam:ListGroups"),
   asyncHandler(async (req, res) => {
     const groups = await prisma.group.findMany({
       orderBy: { createdAt: "asc" },
@@ -62,7 +62,7 @@ router.get(
 
 router.get(
   "/:id",
-  requireIam("iam:GetGroup"),
+  iampermissioncheck("iam:GetGroup"),
   asyncHandler(async (req, res) => {
     const group = await findGroup(req.params.id);
     if (!group) {
@@ -75,7 +75,7 @@ router.get(
 
 router.post(
   "/",
-  requireIam("iam:CreateGroup"),
+  iampermissioncheck("iam:CreateGroup"),
   asyncHandler(async (req, res) => {
     const { name, description } = req.body;
     if (!name) {
@@ -90,7 +90,7 @@ router.post(
 
 router.put(
   "/:id",
-  requireIam("iam:UpdateGroup"),
+  iampermissioncheck("iam:UpdateGroup"),
   asyncHandler(async (req, res) => {
     const group = await findGroup(req.params.id);
     if (!group) {
@@ -121,7 +121,7 @@ router.put(
 
 router.delete(
   "/:id",
-  requireIam("iam:DeleteGroup"),
+  iampermissioncheck("iam:DeleteGroup"),
   asyncHandler(async (req, res) => {
     const group = await findGroup(req.params.id);
     if (!group) {
@@ -145,7 +145,7 @@ router.delete(
 
 router.post(
   "/:id/members",
-  requireIam("iam:AddUserToGroup"),
+  iampermissioncheck("iam:AddUserToGroup"),
   asyncHandler(async (req, res) => {
     const { userId } = req.body;
     if (!userId) {
@@ -182,7 +182,7 @@ router.post(
 
 router.delete(
   "/:id/members/:userId",
-  requireIam("iam:RemoveUserFromGroup"),
+  iampermissioncheck("iam:RemoveUserFromGroup"),
   asyncHandler(async (req, res) => {
     const group = await findGroup(req.params.id);
     const user = await prisma.user.findUnique({ where: { id: req.params.userId } });
@@ -207,7 +207,7 @@ router.delete(
 
 router.post(
   "/:id/policies",
-  requireIam("iam:AttachGroupPolicy"),
+  iampermissioncheck("iam:AttachGroupPolicy"),
   asyncHandler(async (req, res) => {
     const { policyId } = req.body;
     if (!policyId) {
@@ -246,17 +246,25 @@ router.post(
 
 router.delete(
   "/:id/policies/:policyId",
-  requireIam("iam:DetachGroupPolicy"),
+  iampermissioncheck("iam:DetachGroupPolicy"),
   asyncHandler(async (req, res) => {
     const group = await findGroup(req.params.id);
     if (!group) {
       throw notFound("Group not found");
     }
+    const policy = await prisma.policy.findUnique({ where: { id: req.params.policyId } });
+    if (!policy) {
+      throw notFound("Policy not found");
+    }
     ensureNotRootGroupChange(req, group);
 
-    await prisma.groupPolicyAttachment.delete({
-      where: { groupId_policyId: { groupId: group.id, policyId: req.params.policyId } },
-    });
+    if (policy.type === "INLINE") {
+      await prisma.policy.delete({ where: { id: policy.id } });
+    } else {
+      await prisma.groupPolicyAttachment.delete({
+        where: { groupId_policyId: { groupId: group.id, policyId: policy.id } },
+      });
+    }
 
     sendSuccess(res, { groupId: group.id, policyId: req.params.policyId });
   }),

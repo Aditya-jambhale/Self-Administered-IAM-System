@@ -1,8 +1,8 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import { forbidden } from "../utils/httpError.js";
 import { userHasPermission } from "../services/iamService.js";
-
-const requireIam = (action) =>
+//main middleware to check the permissions of actions 
+const iampermissioncheck = (action) =>
   asyncHandler(async (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Authentication required" });
@@ -11,7 +11,7 @@ const requireIam = (action) =>
     if (req.user.isRoot) {
       return next();
     }
-
+    //return the result if the user has the permission to perform the action
     const result = await userHasPermission(req.user.id, action);
 
     if (!result.allowed) {
@@ -21,4 +21,4 @@ const requireIam = (action) =>
     return next();
   });
 
-export default requireIam;
+export default iampermissioncheck;
