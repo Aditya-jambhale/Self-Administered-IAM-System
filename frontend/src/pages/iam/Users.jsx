@@ -7,6 +7,7 @@ import Loading from '../../components/Loading'
 import SearchSelect from '../../components/SearchSelect'
 import StatusMessage from '../../components/StatusMessage'
 import { useAuth } from '../../context/useAuth'
+import { navigateTo } from '../../utils/navigation'
 
 const Users = ({ id }) => {
   const { user: currentUser } = useAuth()
@@ -196,13 +197,30 @@ const Users = ({ id }) => {
       <StatusMessage error={error} />
       <div className="table-wrap">
         <table>
-          <thead><tr><th>Name</th><th>Email</th><th>Root</th><th>Groups</th><th>Direct policies</th><th>Boundary</th></tr></thead>
-          <tbody>{users.map((item) => (
-            <tr key={item.id}>
-              <td><Link to={`/iam/users/${item.id}`}>{item.name}</Link></td>
-              <td>{item.email}</td><td>{item.isRoot ? <span className="mini-badge">Root</span> : 'No'}</td><td>{item.groupCount}</td><td>{item.directPolicyCount}</td><td>{item.hasBoundary ? 'Set' : 'None'}</td>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Root</th>
+              <th>Groups</th>
+              <th>Direct policies</th>
+              <th>Boundary</th>
+              <th></th>
             </tr>
-          ))}</tbody>
+          </thead>
+          <tbody>
+            {users.map((item) => (
+              <tr key={item.id} className="interactive-row" onClick={() => navigateTo(`/iam/users/${item.id}`)}>
+                <td className="font-semibold text-slate-900">{item.name}</td>
+                <td>{item.email}</td>
+                <td>{item.isRoot ? <span className="mini-badge">Root</span> : 'No'}</td>
+                <td>{item.groupCount}</td>
+                <td>{item.directPolicyCount}</td>
+                <td>{item.hasBoundary ? 'Set' : 'None'}</td>
+                <td className="text-right text-slate-400 text-xs font-medium">View profile &rarr;</td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       </div>
     </section>

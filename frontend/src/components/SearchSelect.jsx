@@ -6,10 +6,10 @@ const SearchSelect = ({ id, label, options, value, onChange, placeholder = 'Sear
   const selected = options.find((option) => option.value === value)
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    if (!normalized) return options.slice(0, 8)
+    if (!normalized) return options.slice(0, 15)
     return options
       .filter((option) => `${option.label} ${option.description || ''}`.toLowerCase().includes(normalized))
-      .slice(0, 8)
+      .slice(0, 15)
   }, [options, query])
 
   return (

@@ -21,7 +21,7 @@ const Simulator = () => {
       try {
         const actionPayload = await iamApi.actions()
         setActions(actionPayload.all)
-
+        console.log(actionPayload.all)
         if (currentUser?.isRoot) {
           const userList = await iamApi.listUsers()
           setUsers(userList)

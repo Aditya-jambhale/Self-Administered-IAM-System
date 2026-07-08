@@ -475,4 +475,12 @@
   .nested-list a {
     @apply flex items-center justify-between text-xs text-slate-500 hover:text-slate-950 hover:no-underline py-0.5;
   }
+
+  .interactive-row {
+    @apply cursor-pointer;
+  }
+
+  tr.interactive-row:hover td {
+    @apply bg-slate-100/50!;
+  }
 }

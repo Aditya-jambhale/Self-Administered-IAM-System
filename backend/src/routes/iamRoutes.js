@@ -7,12 +7,16 @@ import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import { sendSuccess } from "../utils/response.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { badRequest, notFound } from "../utils/httpError.js";
+import authenticate from "../middleware/authenticate.js";
 import { getUserWithIam, simulatePermissionForUser } from "../services/iamService.js";
 
 const router = express.Router();
 
-router.get("/actions", iampermissioncheck("iam:ListPolicies"), (req, res) => {
-  sendSuccess(res, { grouped: ACTIONS, all: VALID_ACTIONS });
+router.get("/actions", authenticate, (req, res) => {
+    sendSuccess(res, {
+        grouped: ACTIONS,
+        all: VALID_ACTIONS
+    });
 });
 
 router.post(
