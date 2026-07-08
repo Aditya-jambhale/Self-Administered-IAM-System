@@ -129,3 +129,138 @@ export const buildEffectivePermissionsSummary = (user) => {
 
 export const getPolicyStatementCount = (policy) => policyStatements(policy).length;
 export const getPolicyAllowActions = (policy) => getAllowActions(policyStatements(policy));
+
+
+//simulate the permission (new feature)
+export const simulatePermissionForUser = (user, action) => {
+  const steps = [];
+  steps.push(`Evaluating action "${action}" for user "${user.email}"`);
+
+  if (user.isRoot) {
+    steps.push("User is Root: bypassing all permission checks.");
+    return {
+      allowed: true,
+      reason: "Root user bypass",
+      steps,
+      evaluation: {
+        isRoot: true,
+        directPolicies: [],
+        groupPolicies: [],
+        boundary: null,
+        matchedAllow: true,
+        matchedDeny: false
+      }
+    };
+  }
+
+  // Load policies
+  const directPolicies = user.policyAttachments.map((a) => a.policy.name);
+  const groupPolicies = user.groupMemberships.flatMap((m) =>
+    m.group.policyAttachments.map((a) => `${m.group.name}: ${a.policy.name}`)
+  );
+  const boundary = user.boundary?.policy?.name || null;
+
+  steps.push(`Loaded direct policies: ${directPolicies.length > 0 ? directPolicies.join(", ") : "none"}`);
+  steps.push(`Loaded group policies: ${groupPolicies.length > 0 ? groupPolicies.join(", ") : "none"}`);
+
+  const effectiveStatements = collectEffectiveStatements(user);
+  
+  // Check Deny
+  const hasDeny = effectiveStatements.some(
+    (statement) => statement.Effect === "Deny" && statement.Action.includes(action),
+  );
+  if (hasDeny) {
+    steps.push(`Explicit Deny matched for action "${action}"`);
+    steps.push("Decision: DENY (Explicit Deny wins over Allow)");
+    return {
+      allowed: false,
+      reason: "Explicit Deny",
+      steps,
+      evaluation: {
+        directPolicies,
+        groupPolicies,
+        boundary,
+        matchedAllow: effectiveStatements.some(s => s.Effect === "Allow" && s.Action.includes(action)),
+        matchedDeny: true
+      }
+    };
+  }
+  steps.push("No matching Explicit Deny statement found");
+
+  // Check Allow
+  const hasAllow = effectiveStatements.some(
+    (statement) => statement.Effect === "Allow" && statement.Action.includes(action),
+  );
+  if (!hasAllow) {
+    steps.push(`No matching Explicit Allow statement found for action "${action}"`);
+    steps.push("Decision: DENY (Implicit Deny due to no matching Allow)");
+    return {
+      allowed: false,
+      reason: "Implicit Deny",
+      steps,
+      evaluation: {
+        directPolicies,
+        groupPolicies,
+        boundary,
+        matchedAllow: false,
+        matchedDeny: false
+      }
+    };
+  }
+  steps.push(`Explicit Allow statement matched for action "${action}"`);
+
+  // Check Boundary
+  if (!user.boundary) {
+    steps.push("No Permissions Boundary set on the user");
+    steps.push("Decision: ALLOW (Explicit Allow matched and no boundary set)");
+    return {
+      allowed: true,
+      reason: "Explicit Allow",
+      steps,
+      evaluation: {
+        directPolicies,
+        groupPolicies,
+        boundary,
+        matchedAllow: true,
+        matchedDeny: false
+      }
+    };
+  }
+  steps.push(`Permissions Boundary is set: "${boundary}"`);
+
+  const boundaryAllows = policyStatements(user.boundary.policy).some(
+    (statement) => statement.Effect === "Allow" && statement.Action.includes(action),
+  );
+  if (!boundaryAllows) {
+    steps.push(`Permissions Boundary does NOT allow action "${action}"`);
+    steps.push("Decision: DENY (Permissions boundary caps permissions)");
+    return {
+      allowed: false,
+      reason: "Permissions Boundary",
+      steps,
+      evaluation: {
+        directPolicies,
+        groupPolicies,
+        boundary,
+        matchedAllow: true,
+        matchedDeny: false,
+        boundaryAllows: false
+      }
+    };
+  }
+  steps.push(`Permissions Boundary allows action "${action}"`);
+  steps.push("Decision: ALLOW (Explicit Allow within boundary)");
+  return {
+    allowed: true,
+    reason: "Explicit Allow within boundary",
+    steps,
+    evaluation: {
+      directPolicies,
+      groupPolicies,
+      boundary,
+      matchedAllow: true,
+      matchedDeny: false,
+      boundaryAllows: true
+    }
+  };
+};

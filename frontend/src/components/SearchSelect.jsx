@@ -28,25 +28,30 @@ const SearchSelect = ({ id, label, options, value, onChange, placeholder = 'Sear
           setQuery('')
           setIsOpen(true)
         }}
-        onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+        onBlur={() => setIsOpen(false)}
       />
       {isOpen && !disabled && (
         <div className="search-options">
-          {filtered.length === 0 ? <span className="search-empty">No matches</span> : filtered.map((option) => (
-            <button
-              type="button"
-              className={option.value === value ? 'search-option active' : 'search-option'}
-              key={option.value}
-              onClick={() => {
-                onChange(option.value)
-                setQuery('')
-                setIsOpen(false)
-              }}
-            >
-              <span>{option.label}</span>
-              {option.description && <small>{option.description}</small>}
-            </button>
-          ))}
+          {filtered.length === 0 ? (
+            <span className="search-empty">No matches</span>
+          ) : (
+            filtered.map((option) => (
+              <button
+                type="button"
+                className={option.value === value ? 'search-option active' : 'search-option'}
+                key={option.value}
+                onMouseDown={(e) => {
+                  e.preventDefault() // Prevents input blur race condition
+                  onChange(option.value)
+                  setQuery('')
+                  setIsOpen(false)
+                }}
+              >
+                <span>{option.label}</span>
+                {option.description && <small>{option.description}</small>}
+              </button>
+            ))
+          )}
         </div>
       )}
     </div>

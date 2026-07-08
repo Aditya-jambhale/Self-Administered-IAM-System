@@ -49,9 +49,11 @@ const ActionMultiSelect = ({ selectedActions, allActions, onAdd, onRemove }) => 
                   type="button"
                   className="search-option"
                   key={action}
-                  onClick={() => {
+                  onMouseDown={(e) => {
+                    e.preventDefault()
                     onAdd(action)
                     setQuery('')
+                    setIsOpen(false)
                   }}
                 >
                   {action}

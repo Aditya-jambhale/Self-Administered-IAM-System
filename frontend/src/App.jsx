@@ -11,6 +11,7 @@ import PolicyForm from './pages/iam/PolicyForm'
 import PolicyDetail from './pages/iam/PolicyDetail'
 import Groups from './pages/iam/Groups'
 import Users from './pages/iam/Users'
+import Simulator from './pages/iam/Simulator'
 import { navigateTo, pathSegments } from './utils/navigation'
 import './App.css'
 
@@ -68,6 +69,7 @@ const RouteSwitch = () => {
   if (path === '/dashboard') page = <Dashboard />
   else if (path === '/iam/policies') page = <Policies />
   else if (path === '/iam/policies/new') page = <PolicyForm />
+  else if (path === '/iam/simulator') page = <Simulator />
   else if (segments[0] === 'iam' && segments[1] === 'policies' && segments[2] && segments.length === 3) {
     page = <PolicyDetail id={segments[2]} />
   }

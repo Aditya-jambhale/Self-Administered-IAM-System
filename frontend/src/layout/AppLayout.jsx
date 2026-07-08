@@ -9,6 +9,7 @@ const AppLayout = ({ path, children }) => {
     ['/iam/policies', 'Policies'],
     ['/iam/groups', 'Groups'],
     ['/iam/users', 'Users'],
+    ['/iam/simulator', 'Simulator'],
   ]
 
   return (

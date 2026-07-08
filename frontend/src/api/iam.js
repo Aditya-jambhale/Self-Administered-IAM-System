@@ -25,4 +25,5 @@ export const iamApi = {
   detachUserPolicy: (id, policyId) => request(`/api/iam/users/${id}/policies/${policyId}`, { method: 'DELETE' }),
   setBoundary: (id, policyId) => request(`/api/iam/users/${id}/boundary`, { method: 'PUT', body: { policyId } }),
   removeBoundary: (id) => request(`/api/iam/users/${id}/boundary`, { method: 'DELETE' }),
+  simulate: (payload) => request('/api/iam/simulate', { method: 'POST', body: payload }),
 }
