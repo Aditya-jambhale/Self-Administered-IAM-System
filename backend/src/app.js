@@ -1,8 +1,8 @@
 import express from "express";
 import cors from "cors";
-import authRoutes from "./routes/authRoutes.js";
-import iamRoutes from "./routes/iamRoutes.js";
-import resourceRoutes from "./routes/resourceRoutes.js";
+import authRoutes from "./routes/auth.routes.js";
+import iamRoutes from "./routes/iam.routes.js";
+import resourceRoutes from "./routes/resource.routes.js";
 import authenticate from "./middleware/authenticate.js";
 import errorHandler from "./middleware/errorHandler.js";
 

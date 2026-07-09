@@ -10,7 +10,10 @@ import { sendSuccess } from "../utils/response.js";
 const router = express.Router();
 
 const policyInclude = {
-  userAttachments: { include: { user: { select: { id: true, name: true, email: true, isRoot: true } } } },
+  userAttachments: {
+    include:
+      { user: { select: { id: true, name: true, email: true, isRoot: true } } }
+  },
   groupAttachments: {
     include: {
       group: {
@@ -33,12 +36,12 @@ const ensurePolicyNameAvailable = async (name, exceptId = undefined) => {
     throw conflict("A policy with this name already exists");
   }
 };
-
+//deny for policy editing if it is attached to root user or group that contains root user
 const ensureNotModifyingRootPolicy = (req, policy) => {
   if (req.user.isRoot) {
     return;
   }
-
+  
   const attachedToRoot =
     policy.userAttachments?.some((attachment) => attachment.user.isRoot) ||
     policy.boundaries?.some((boundary) => boundary.user.isRoot) ||

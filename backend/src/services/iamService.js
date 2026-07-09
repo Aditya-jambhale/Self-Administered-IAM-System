@@ -37,7 +37,7 @@ export const getUserWithIam = async (userId) => {
     },
   });
 };
-
+//collect the effective statements 
 export const collectEffectiveStatements = (user) => {
   const directStatements = user.policyAttachments.flatMap((attachment) =>
     policyStatements(attachment.policy),
@@ -49,12 +49,15 @@ export const collectEffectiveStatements = (user) => {
   return [...directStatements, ...groupStatements];
 };
 
-export const evaluatePermissionForUser = (user, action) => {
+//check the user if its root or not 
+
+export const evaluatePermission = (user, action) => {
   if (user.isRoot) {
     return { allowed: true, reason: "Root user bypass" };
   }
-
+//PEA algorithm: Explicit Deny > Explicit Allow > Implicit Deny > Permissions Boundary
   const effectiveStatements = collectEffectiveStatements(user);
+
   const hasDeny = effectiveStatements.some(
     (statement) => statement.Effect === "Deny" && statement.Action.includes(action),
   );
@@ -62,7 +65,7 @@ export const evaluatePermissionForUser = (user, action) => {
   if (hasDeny) {
     return { allowed: false, reason: "Explicit deny" };
   }
-
+//explicit allow check
   const hasAllow = effectiveStatements.some(
     (statement) => statement.Effect === "Allow" && statement.Action.includes(action),
   );
@@ -86,15 +89,17 @@ export const evaluatePermissionForUser = (user, action) => {
   return { allowed: true, reason: "Explicit allow within boundary" };
 };
 
-export const userHasPermission = async (userId, action) => {
+
+export const userHasPermissionMember = async (userId, action) => {
   const user = await getUserWithIam(userId);
 
   if (!user) {
     return { allowed: false, reason: "User not found" };
   }
 
-  return evaluatePermissionForUser(user, action);
+  return evaluatePermission(user, action);
 };
+
 
 export const assertCanDelegateStatements = async (requestingUser, statements) => {
   if (requestingUser.isRoot) {
@@ -104,7 +109,7 @@ export const assertCanDelegateStatements = async (requestingUser, statements) =>
   const allowActions = getAllowActions(statements);
 
   for (const action of allowActions) {
-    const result = await userHasPermission(requestingUser.id, action);
+    const result = await userHasPermissionMember(requestingUser.id, action);
     if (!result.allowed) {
       throw forbidden(`Delegation denied: you do not currently have ${action}`);
     }
@@ -116,7 +121,7 @@ export const buildEffectivePermissionsSummary = (user) => {
     Object.entries(ACTIONS).map(([namespace, actions]) => [
       namespace,
       actions.map((action) => {
-        const result = evaluatePermissionForUser(user, action);
+        const result = evaluatePermission(user, action);
         return {
           action,
           allowed: result.allowed,

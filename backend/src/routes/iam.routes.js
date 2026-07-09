@@ -1,7 +1,7 @@
 import express from "express";
-import policyRoutes from "./policyRoutes.js";
-import groupRoutes from "./groupRoutes.js";
-import userRoutes from "./userRoutes.js";
+import policyRoutes from "./policy.routes.js";
+import groupRoutes from "./group.routes.js";
+import userRoutes from "./user.routes.js";
 import { ACTIONS, VALID_ACTIONS } from "../constants/actions.js";
 import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import { sendSuccess } from "../utils/response.js";

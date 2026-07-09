@@ -57,10 +57,12 @@ const RouteSwitch = () => {
   useEffect(() => {
     if (path === '/') {
       navigateTo(user ? '/dashboard' : '/login')
+    } else if (path === '/iam') {
+      navigateTo('/iam/policies')
     }
   }, [path, user])
 
-  if (path === '/') return loading ? <Loading label="Starting console" /> : null
+  if (path === '/' || path === '/iam') return loading ? <Loading label="Starting console" /> : null
   if (path === '/login') return user ? (navigateTo('/dashboard'), null) : <Login />
   if (path === '/register') return user ? (navigateTo('/dashboard'), null) : <Register />
 

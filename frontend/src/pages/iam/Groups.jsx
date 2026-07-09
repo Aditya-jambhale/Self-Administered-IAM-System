@@ -198,13 +198,32 @@ const Groups = ({ id }) => {
               <SearchSelect id="add-group-member" options={availableUsers} value={selectedUser} onChange={setSelectedUser} placeholder="Search users" />
               <button type="button" onClick={addMember}>Add</button>
             </div>
-            <div className="stack-list">
-              {group.members.map((member) => (
-                <div className="list-row" key={member.userId}>
-                  <span>{member.user.name}<small>{member.user.email}</small></span>
-                  <button type="button" className="text-danger" onClick={async () => { await iamApi.removeUserFromGroup(id, member.userId); await load() }}>Remove</button>
-                </div>
-              ))}
+            <div className="table-wrap mt-4">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.members.map((member) => (
+                    <tr key={member.userId}>
+                      <td className="font-semibold">{member.user.name}</td>
+                      <td>{member.user.email}</td>
+                      <td className="row-actions">
+                        <button type="button" className="text-danger" onClick={async () => { await iamApi.removeUserFromGroup(id, member.userId); await load() }}>Remove</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {group.members.length === 0 && (
+                    <tr>
+                      <td colSpan="3" className="text-center text-slate-400 py-4 text-sm">No members in this group</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
 
@@ -214,13 +233,32 @@ const Groups = ({ id }) => {
               <SearchSelect id="attach-group-policy" options={availablePolicies} value={selectedPolicy} onChange={setSelectedPolicy} placeholder="Search managed policies" />
               <button type="button" onClick={attachPolicy}>Attach</button>
             </div>
-            <div className="stack-list">
-              {group.policyAttachments.map((attachment) => (
-                <div className="list-row" key={attachment.policyId}>
-                  <Link to={`/iam/policies/${attachment.policyId}`}>{attachment.policy.name}</Link>
-                  <button type="button" className="text-danger" onClick={async () => { await iamApi.detachGroupPolicy(id, attachment.policyId); await load() }}>Detach</button>
-                </div>
-              ))}
+            <div className="table-wrap mt-4">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Policy Name</th>
+                    <th>Type</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.policyAttachments.map((attachment) => (
+                    <tr key={attachment.policyId}>
+                      <td><Link to={`/iam/policies/${attachment.policyId}`}>{attachment.policy.name}</Link></td>
+                      <td><span className="mini-badge">{attachment.policy.type}</span></td>
+                      <td className="row-actions">
+                        <button type="button" className="text-danger" onClick={async () => { await iamApi.detachGroupPolicy(id, attachment.policyId); await load() }}>Detach</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {group.policyAttachments.length === 0 && (
+                    <tr>
+                      <td colSpan="3" className="text-center text-slate-400 py-4 text-sm">No policies attached to this group</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
         </div>

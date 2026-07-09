@@ -1,6 +1,6 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import { forbidden } from "../utils/httpError.js";
-import { userHasPermission } from "../services/iamService.js";
+import { userHasPermissionMember } from "../services/iamService.js";
 //main middleware to check the permissions of actions 
 const iampermissioncheck = (action) =>
   asyncHandler(async (req, res, next) => {
@@ -12,7 +12,7 @@ const iampermissioncheck = (action) =>
       return next();
     }
     //return the result if the user has the permission to perform the action
-    const result = await userHasPermission(req.user.id, action);
+    const result = await userHasPermissionMember(req.user.id, action);
 
     if (!result.allowed) {
       throw forbidden(result.reason || "Access denied");

@@ -9,7 +9,11 @@ import { sendSuccess } from "../utils/response.js";
 const router = express.Router();
 
 const groupDetailInclude = {
-  members: { include: { user: { select: { id: true, name: true, email: true, isRoot: true } } } },
+  members: 
+  { include: 
+    { user: 
+      { select: 
+        { id: true, name: true, email: true, isRoot: true } } } },
   policyAttachments: { include: { policy: true } },
 };
 
@@ -38,7 +42,7 @@ const ensureNotRootGroupChange = (req, group) => {
 
 router.get(
   "/",
-  iampermissioncheck("iam:ListGroups"),
+  iampermissioncheck("iam:ListGroups"), //middleware
   asyncHandler(async (req, res) => {
     const groups = await prisma.group.findMany({
       orderBy: { createdAt: "asc" },

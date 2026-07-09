@@ -124,13 +124,32 @@ const Users = ({ id }) => {
               />
               <button type="button" onClick={attachPolicy}>Attach</button>
             </div>
-            <div className="stack-list">
-              {user.directPolicies.map((policy) => (
-                <div className="list-row" key={policy.id}>
-                  <Link to={`/iam/policies/${policy.id}`}>{policy.name}</Link>
-                  <button type="button" className="text-danger" onClick={async () => { await iamApi.detachUserPolicy(id, policy.id); await load() }}>Detach</button>
-                </div>
-              ))}
+            <div className="table-wrap mt-4">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Policy Name</th>
+                    <th>Type</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {user.directPolicies.map((policy) => (
+                    <tr key={policy.id}>
+                      <td><Link to={`/iam/policies/${policy.id}`}>{policy.name}</Link></td>
+                      <td><span className="mini-badge">{policy.type}</span></td>
+                      <td className="row-actions">
+                        <button type="button" className="text-danger" onClick={async () => { await iamApi.detachUserPolicy(id, policy.id); await load() }}>Detach</button>
+                      </td>
+                    </tr>
+                  ))}
+                  {user.directPolicies.length === 0 && (
+                    <tr>
+                      <td colSpan="3" className="text-center text-slate-400 py-4 text-sm">No direct policies attached</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
 
@@ -148,38 +167,81 @@ const Users = ({ id }) => {
                 <button type="button" onClick={setBoundary}>Set</button>
               </div>
               {user.boundary ? (
-                <div className="list-row boundary-row">
-                  <Link to={`/iam/policies/${user.boundary.id}`}>{user.boundary.name}</Link>
-                  <button type="button" className="text-danger" onClick={async () => { await iamApi.removeBoundary(id); await load() }}>Remove</button>
+                <div className="mt-4">
+                  <div className="list-row boundary-row mb-4">
+                    <Link to={`/iam/policies/${user.boundary.id}`}>{user.boundary.name}</Link>
+                    <button type="button" className="text-danger" onClick={async () => { await iamApi.removeBoundary(id); await load() }}>Remove</button>
+                  </div>
+                  <div className="text-xs font-bold text-slate-400 mb-1 uppercase">Boundary Policy Statements:</div>
+                  <pre className="text-xs bg-slate-900 text-slate-100 p-3 rounded overflow-x-auto max-h-40">
+                    {JSON.stringify({ statements: user.boundary.statements }, null, 2)}
+                  </pre>
                 </div>
-              ) : <p className="muted">No boundary set</p>}
+              ) : <p className="muted mt-4">No boundary set</p>}
             </section>
           )}
         </div>
 
         <section className="tool-panel">
           <h3>Groups</h3>
-          <div className="stack-list">
-            {user.groups.map((group) => {
-              const open = Boolean(openGroups[group.id])
-              return (
-                <div className="expand-row" key={group.id}>
-                  <div className="list-row">
-                    <Link to={`/iam/groups/${group.id}`}>{group.name}</Link>
-                    <button type="button" className="secondary" onClick={() => setOpenGroups({ ...openGroups, [group.id]: !open })}>
-                      {open ? 'Hide policies' : `${group.policies.length} inherited policies`}
-                    </button>
-                  </div>
-                  {open && (
-                    <div className="nested-list">
-                      {group.policies.length === 0 ? <p className="muted">No policies attached</p> : group.policies.map((policy) => (
-                        <Link key={policy.id} to={`/iam/policies/${policy.id}`}>{policy.name} <small>{policy.type}</small></Link>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+          <div className="table-wrap mt-4">
+            <table>
+              <thead>
+                <tr>
+                  <th>Group Name</th>
+                  <th>Description</th>
+                  <th>Attached Policies</th>
+                </tr>
+              </thead>
+              <tbody>
+                {user.groups.flatMap((group) => {
+                  const open = Boolean(openGroups[group.id])
+                  return [
+                    <tr key={group.id}>
+                      <td className="font-semibold"><Link to={`/iam/groups/${group.id}`}>{group.name}</Link></td>
+                      <td>{group.description || 'No description'}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="secondary px-2 py-1 text-xs"
+                          onClick={() => setOpenGroups({ ...openGroups, [group.id]: !open })}
+                        >
+                          {open ? 'Hide policies' : `${group.policies.length} inherited policies`}
+                        </button>
+                      </td>
+                    </tr>,
+                    open && (
+                      <tr key={`${group.id}-expanded`} className="bg-slate-50/50">
+                        <td colSpan="3" className="p-4">
+                          <div className="text-xs font-bold text-slate-400 mb-2 uppercase">Policies in Group {group.name}:</div>
+                          {group.policies.length === 0 ? (
+                            <p className="text-xs text-slate-400">No policies attached to this group</p>
+                          ) : (
+                            <div className="flex flex-wrap gap-2">
+                              {group.policies.map((policy) => (
+                                <Link
+                                  key={policy.id}
+                                  to={`/iam/policies/${policy.id}`}
+                                  className="chip"
+                                  style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                >
+                                  {policy.name} <small className="text-slate-400">({policy.type})</small>
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  ]
+                })}
+                {user.groups.length === 0 && (
+                  <tr>
+                    <td colSpan="3" className="text-center text-slate-400 py-4 text-sm">No group memberships</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </section>
 
@@ -216,7 +278,7 @@ const Users = ({ id }) => {
                 <td>{item.isRoot ? <span className="mini-badge">Root</span> : 'No'}</td>
                 <td>{item.groupCount}</td>
                 <td>{item.directPolicyCount}</td>
-                <td>{item.hasBoundary ? 'Set' : 'None'}</td>
+                <td>{item.hasBoundary ? 'Yes' : 'No'}</td>
                 <td className="text-right text-slate-400 text-xs font-medium">View profile &rarr;</td>
               </tr>
             ))}
