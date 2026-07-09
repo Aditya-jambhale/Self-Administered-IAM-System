@@ -9,6 +9,7 @@ const rateLimiterRedis = new RateLimiterRedis({
   keyPrefix: "iam_rate_limit",
   points: rateLimitMax,
   duration: rateLimitWindowSeconds,
+  useRedisPackage: true,  // tells the server to use modern v4+ redis package 
 });
 
 const rateLimiterMemory = new RateLimiterMemory({
