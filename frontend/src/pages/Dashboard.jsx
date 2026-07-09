@@ -1,9 +1,39 @@
-import { useState } from 'react'
-import { callResourceAction } from '../api/resources'
-import { groupedResourceActions } from '../constants/resourceActions'
+import { useState, useEffect } from 'react'
+import { callResourceAction, listResources } from '../api/resources'
 
 const Dashboard = () => {
   const [results, setResults] = useState({})
+  const [groupedResourceActions, setGroupedResourceActions] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    const fetchResources = async () => {
+      try {
+        const data = await listResources()
+        if (!active) return
+
+        const grouped = data.reduce((acc, item) => {
+          acc[item.group] = acc[item.group] || []
+          acc[item.group].push(item)
+          return acc
+        }, {})
+
+        setGroupedResourceActions(grouped)
+        setLoading(false)
+      } catch (err) {
+        if (!active) return
+        setError(err.message || 'Failed to load resources')
+        setLoading(false)
+      }
+    }
+
+    fetchResources()
+    return () => {
+      active = false
+    }
+  }, [])
 
   const runAction = async (item) => {
     setResults((current) => ({ ...current, [item.action]: { status: 'running', message: 'Checking' } }))
@@ -20,6 +50,32 @@ const Dashboard = () => {
         },
       }))
     }
+  }
+
+  if (loading) {
+    return (
+      <section className="page-stack">
+        <header className="page-header">
+          <div>
+            <h1>Resource Dashboard</h1>
+            <p>Loading resource actions from backend...</p>
+          </div>
+        </header>
+      </section>
+    )
+  }
+
+  if (error) {
+    return (
+      <section className="page-stack">
+        <header className="page-header">
+          <div>
+            <h1>Resource Dashboard</h1>
+            <p style={{ color: '#ef4444' }}>Error: {error}</p>
+          </div>
+        </header>
+      </section>
+    )
   }
 
   return (

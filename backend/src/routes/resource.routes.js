@@ -1,29 +1,22 @@
 import express from "express";
 import iampermissioncheck from "../middleware/iampermissioncheck.js";
-import { sendOk } from "../utils/response.js";
+import { handleResource, getResources } from "../controllers/resource.controller.js";
+import { RESOURCE_ACTIONS } from "../constants/resourceActions.js";
 
 const router = express.Router();
 
+// Define route for retrieving resource actions metadata
+router.get("/resources", getResources);
+
 const protectedRoute = (method, path, action) => {
-  router[method](path, iampermissioncheck(action), (req, res) => sendOk(res));
+  router[method](path, iampermissioncheck(action), handleResource);
 };
 
-protectedRoute("get", "/reports", "reports:List");
-protectedRoute("get", "/reports/:id", "reports:Read");
-protectedRoute("post", "/reports", "reports:Create");
-protectedRoute("put", "/reports/:id", "reports:Update");
-protectedRoute("delete", "/reports/:id", "reports:Delete");
-
-protectedRoute("get", "/alerts", "alerts:List");
-protectedRoute("get", "/alerts/:id", "alerts:Read");
-protectedRoute("post", "/alerts", "alerts:Create");
-protectedRoute("patch", "/alerts/:id/acknowledge", "alerts:Acknowledge");
-protectedRoute("delete", "/alerts/:id", "alerts:Delete");
-
-protectedRoute("get", "/settings", "settings:Read");
-protectedRoute("put", "/settings", "settings:Update");
-
-protectedRoute("get", "/audit", "audit:List");
-protectedRoute("get", "/audit/:id", "audit:Read");
+// Dynamically register routes based on the backend definition
+RESOURCE_ACTIONS.forEach(({ method, path, action }) => {
+  // Strip the '/api' prefix from path for backend routing
+  const routePath = path.replace(/^\/api/, "");
+  protectedRoute(method.toLowerCase(), routePath, action);
+});
 
 export default router;

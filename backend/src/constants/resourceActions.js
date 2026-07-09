@@ -1,4 +1,4 @@
-export const resourceActions = [
+export const RESOURCE_ACTIONS = [
   { group: 'reports', label: 'List reports', action: 'reports:List', method: 'GET', path: '/api/reports' },
   { group: 'reports', label: 'Read report', action: 'reports:Read', method: 'GET', path: '/api/reports/demo-report' },
   { group: 'reports', label: 'Create report', action: 'reports:Create', method: 'POST', path: '/api/reports' },
@@ -13,10 +13,4 @@ export const resourceActions = [
   { group: 'settings', label: 'Update settings', action: 'settings:Update', method: 'PUT', path: '/api/settings' },
   { group: 'audit', label: 'List audit logs', action: 'audit:List', method: 'GET', path: '/api/audit' },
   { group: 'audit', label: 'Read audit log', action: 'audit:Read', method: 'GET', path: '/api/audit/demo-log' },
-]
-
-export const groupedResourceActions = resourceActions.reduce((acc, item) => {
-  acc[item.group] = acc[item.group] || []
-  acc[item.group].push(item)
-  return acc
-}, {})
+];
