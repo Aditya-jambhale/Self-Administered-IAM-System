@@ -7,60 +7,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum PolicyType {
-  MANAGED
-  INLINE
-}
-
 model User {
-  id           String   @id @default(uuid())
-  name         String
-  email        String   @unique
-  passwordHash String
-  isRoot       Boolean  @default(false)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  groupMemberships UserGroupMembership[]
-  policyAttachments UserPolicyAttachment[]
+  id                String                 @id @default(uuid())
+  name              String
+  email             String                 @unique
+  passwordHash      String
+  isRoot            Boolean                @default(false)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
   boundary          UserBoundary?
+  groupMemberships  UserGroupMembership[]
+  policyAttachments UserPolicyAttachment[]
+  refreshTokens     RefreshToken[]
 }
 
 model Group {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  members           UserGroupMembership[]
+  id                String                  @id @default(uuid())
+  name              String                  @unique
+  description       String?
+  createdAt         DateTime                @default(now())
+  updatedAt         DateTime                @updatedAt
   policyAttachments GroupPolicyAttachment[]
+  members           UserGroupMembership[]
 }
 
 model Policy {
-  id          String     @id @default(uuid())
-  name        String     @unique
-  description String?
-  type        PolicyType
-  statements  Json
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  userAttachments  UserPolicyAttachment[]
+  id               String                  @id @default(uuid())
+  name             String                  @unique
+  description      String?
+  type             PolicyType
+  statements       Json
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
   groupAttachments GroupPolicyAttachment[]
   boundaries       UserBoundary[]
+  userAttachments  UserPolicyAttachment[]
 }
 
 model UserGroupMembership {
   userId  String
   groupId String
   addedAt DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group   Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, groupId])
   @@index([userId])
@@ -71,9 +60,8 @@ model UserPolicyAttachment {
   userId     String
   policyId   String
   attachedAt DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, policyId])
   @@index([userId])
@@ -84,9 +72,8 @@ model GroupPolicyAttachment {
   groupId    String
   policyId   String
   attachedAt DateTime @default(now())
-
-  group  Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  policy Policy @relation(fields: [policyId], references: [id], onDelete: Cascade)
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  policy     Policy   @relation(fields: [policyId], references: [id], onDelete: Cascade)
 
   @@id([groupId, policyId])
   @@index([groupId])
@@ -97,9 +84,27 @@ model UserBoundary {
   userId   String   @id
   policyId String
   setAt    DateTime @default(now())
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  policy Policy @relation(fields: [policyId], references: [id])
+  policy   Policy   @relation(fields: [policyId], references: [id])
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([policyId])
 }
+
+enum PolicyType {
+  MANAGED
+  INLINE
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  revokedAt DateTime?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+

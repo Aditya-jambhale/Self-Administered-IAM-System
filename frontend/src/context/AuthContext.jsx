@@ -1,19 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as authApi from '../api/auth'
-import { getToken } from '../api/client'
 import { navigateTo } from '../utils/navigation'
 import AuthContext from './authContextObject'
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(Boolean(getToken()))
+  const [loading, setLoading] = useState(true)
 
   const refreshUser = useCallback(async () => {
-    if (!getToken()) {
-      setLoading(false)
-      return null
-    }
-
     try {
       const currentUser = await authApi.me()
       setUser(currentUser)
@@ -30,11 +24,6 @@ export const AuthProvider = ({ children }) => {
     let active = true
 
     const loadCurrentUser = async () => {
-      if (!getToken()) {
-        if (active) setLoading(false)
-        return
-      }
-
       try {
         const currentUser = await authApi.me()
         if (active) setUser(currentUser)
