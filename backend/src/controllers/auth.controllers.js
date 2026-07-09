@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import prisma from "../config/prisma.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { badRequest, conflict, unauthorized } from "../utils/httpError.js";
@@ -7,19 +8,19 @@ import { sendSuccess } from "../utils/response.js";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+const hashToken = (token) => {
+  return crypto.createHash("sha256").update(token).digest("hex");
+};
+
+const generateRandomToken = () => {
+  return crypto.randomBytes(40).toString("hex");
+};
+
 const signAccessToken = (user) => {
   return jwt.sign(
     { sub: user.id, email: user.email, isRoot: user.isRoot },
     process.env.JWT_SECRET || "dev-secret-change-me",
     { expiresIn: "15m" }
-  );
-};
-
-const signRefreshToken = (user) => {
-  return jwt.sign(
-    { sub: user.id, email: user.email, isRoot: user.isRoot },
-    process.env.JWT_SECRET || "dev-secret-change-me",
-    { expiresIn: "7d" }
   );
 };
 
@@ -62,7 +63,7 @@ const publicUser = (user) => ({
   createdAt: user.createdAt,
   updatedAt: user.updatedAt,
 });
-
+//new user 
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -70,8 +71,10 @@ export const register = asyncHandler(async (req, res) => {
     throw badRequest("name, email, and password are required");
   }
 
-  if (password.length < 6) {
-    throw badRequest("password must be at least 6 characters");
+  // Strong password complexity validation: minimum 8 chars, at least 1 uppercase, 1 lowercase, 1 digit, 1 special char
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+  if (!passwordRegex.test(password)) {
+    throw badRequest("Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&#).");
   }
 
   const existing = await prisma.user.findUnique({ where: { email } });
@@ -105,20 +108,21 @@ export const login = asyncHandler(async (req, res) => {
   }
 
   const accessToken = signAccessToken(user);
-  const refreshToken = signRefreshToken(user);
+  const rawRefreshToken = generateRandomToken();
+  const hashedRefreshToken = hashToken(rawRefreshToken);
 
-  // Store refresh token in database
+  // Store hashed refresh token in database
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
   await prisma.refreshToken.create({
     data: {
-      token: refreshToken,
+      token: hashedRefreshToken,
       userId: user.id,
       expiresAt,
     },
   });
 
-  // Set cookies
-  setAuthCookies(res, accessToken, refreshToken);
+  // Set secure cookies
+  setAuthCookies(res, accessToken, rawRefreshToken);
 
   sendSuccess(res, { user: publicUser(user) });
 });
@@ -127,9 +131,10 @@ export const logout = asyncHandler(async (req, res) => {
   const refreshToken = req.cookies?.refreshToken;
 
   if (refreshToken) {
+    const hashed = hashToken(refreshToken);
     // Delete refresh token from DB
     await prisma.refreshToken.deleteMany({
-      where: { token: refreshToken },
+      where: { token: hashed },
     });
   }
 
@@ -151,27 +156,45 @@ export const refresh = asyncHandler(async (req, res) => {
     throw unauthorized("Refresh token missing");
   }
 
-  try {
-    const payload = jwt.verify(refreshToken, process.env.JWT_SECRET || "dev-secret-change-me");
-    
-    // Check if refresh token is in the database and is active
-    const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
-      include: { user: true },
-    });
+  const hashed = hashToken(refreshToken);
 
-    if (!storedToken || storedToken.revokedAt || storedToken.expiresAt < new Date()) {
-      throw unauthorized("Invalid or expired refresh token");
-    }
+  // Check if refresh token is in the database and is active
+  const storedToken = await prisma.refreshToken.findUnique({
+    where: { token: hashed },
+    include: { user: true },
+  });
 
-    const user = storedToken.user;
-    const newAccessToken = signAccessToken(user);
-
-    // Set new access token cookie
-    setAuthCookies(res, newAccessToken);
-
-    sendSuccess(res, { user: publicUser(user) });
-  } catch (error) {
+  if (!storedToken || storedToken.revokedAt || storedToken.expiresAt < new Date()) {
+    // If the token is invalid/compromised, clear cookies and reject
+    clearAuthCookies(res);
     throw unauthorized("Invalid or expired refresh token");
   }
+
+  const user = storedToken.user;
+
+  // Perform Refresh Token Rotation (RTR)
+  // 1. Delete the old refresh token from database
+  await prisma.refreshToken.deleteMany({
+    where: { token: hashed },
+  });
+
+  // 2. Generate new set of tokens
+  const newAccessToken = signAccessToken(user);
+  const newRawRefreshToken = generateRandomToken();
+  const newHashedRefreshToken = hashToken(newRawRefreshToken);
+
+  // 3. Save new hashed refresh token in database
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await prisma.refreshToken.create({
+    data: {
+      token: newHashedRefreshToken,
+      userId: user.id,
+      expiresAt,
+    },
+  });
+
+  // 4. Set rotated cookies
+  setAuthCookies(res, newAccessToken, newRawRefreshToken);
+
+  sendSuccess(res, { user: publicUser(user) });
 });

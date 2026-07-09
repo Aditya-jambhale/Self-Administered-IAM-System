@@ -7,7 +7,7 @@ import iampermissioncheck from "../middleware/iampermissioncheck.js";
 import { sendSuccess } from "../utils/response.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { badRequest, notFound } from "../utils/httpError.js";
-import authenticate from "../middleware/authenticate.js";
+import authenticate from "../middleware/auth.middleware.js";
 import { getUserWithIam, simulatePermissionForUser } from "../services/iamService.js";
 
 const router = express.Router();
